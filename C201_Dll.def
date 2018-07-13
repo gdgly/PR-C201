@@ -1,0 +1,17 @@
+; C201_Dll.def : Declares the module parameters for the DLL.
+
+LIBRARY      "C201_Print_dll"
+
+EXPORTS
+JT_StartOneJob
+JT_ParkSmartCard
+JT_UnParkSmartCard
+JT_PrintPretreatment
+JT_PrintText
+JT_PrintImage
+JT_StartPrinting
+JT_EndJob
+JT_CheckState
+JT_GetPrinterSn
+JT_MoveCardOut
+; Explicit exports can go here
