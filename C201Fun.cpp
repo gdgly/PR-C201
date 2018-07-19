@@ -69,7 +69,7 @@ extern void WriteLog(CString log);
 //0	Heat Roller Warm Up	Print data not received (Not used)
 //1-7	Reserved				Not used
 
-bool ResetPrint(CString			PrinterName)
+bool C201::ResetPrint(CString			PrinterName)
 {
 	USES_CONVERSION;	
 	bool bSuccess = false;
@@ -127,11 +127,11 @@ bool ResetPrint(CString			PrinterName)
 
 C201::C201(void)
 {
-	//m_ComDlg = NULL;
+	m_hInstance = NULL;
 	m_hCardDCForPrinting = NULL;
 	m_hCardDCForParKSmartCard  = NULL;
 	pr56handle = INVALID_HANDLE_VALUE;
-	PR5600HANDLE pr56handle =  NULL;		// Printer handle
+	//PR5600HANDLE pr56handle =  NULL;		// Printer handle
   	pDEVMODE = NULL;			// DEVMODE structure
 
 	m_bIsPrinting = false;
@@ -143,16 +143,11 @@ C201::C201(void)
 
 C201::~C201(void)
 {
-	//if(m_hInstance)
-	//	FreeLibrary(m_hInstance);
-
-	//if(m_ComDlg)
-	//{
-	//	m_ComDlg->DestroyWindow();    
-	//	delete   m_ComDlg;
-	//	m_ComDlg = NULL;
-	//}
-
+	if(m_hInstance)
+	{
+		FreeLibrary(m_hInstance);
+		m_hInstance = NULL;
+	}
 	m_Pic1.FreePictureData();
 	if(m_hCardDCForPrinting)
 	{
@@ -187,6 +182,14 @@ unsigned short	C201::C201_StartOneJob(CString strPrintName)
 	if(!IsMyPrinter(NULL))
 		return	  0x9077;
 
+	if(m_hInstance == NULL)
+	{		
+		if (!C201_LoadC201DLL(strPrintName))
+		{
+			return 0x9099;
+		}
+	}
+
 	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
 	Gdiplus::GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
 
@@ -202,79 +205,60 @@ unsigned short	C201::C201_StartOneJob(CString strPrintName)
 	int nameLen  = strPrintName.GetLength();
 	char sort = strPrintName.GetAt(nameLen-1);
 
-	//if(m_ComDlg==NULL)
-	//{
-		try
+	try
+	{
+		if(m_hCardDCForPrinting==0)
 		{
-			//m_ComDlg  = new CMessageDlg ();
-			//m_ComDlg->Create(MAKEINTRESOURCE(CMessageDlg::IDD),NULL);
-			//m_ComDlg->ShowWindow(SW_HIDE);
-			//((CMessageDlg*)m_ComDlg)->m_pC201Command = this;
-
-			if(m_hCardDCForPrinting==0)
+			m_hCardDCForPrinting = CreateDC(NULL, m_strPrinterName, NULL, NULL);
+			if(m_hCardDCForPrinting==0) 
 			{
-				m_hCardDCForPrinting = CreateDC(NULL, m_strPrinterName, NULL, NULL);
-				if(m_hCardDCForPrinting==0) 
-				{
-					return 0x9010;
-				}
+				return 0x9010;
+			}
 
-				pr56handle = pr56XXOpenPrinter(0, 0, m_strPrinterName.GetBuffer(0), NULL, 0);
-				if(pr56handle == INVALID_HANDLE_VALUE)
+			pr56handle = pr56XXOpenPrinter(0, 0, m_strPrinterName.GetBuffer(0), NULL, 0);
+			if(pr56handle == INVALID_HANDLE_VALUE)
+			{
+				byte reson = 0;
+				DWORD	dwSize = 0;	
+				DWORD	pdwNeeded = 0;
+				DWORD	pdwReturned = 0;
+				result = pr56XXEnumEnabledPrinters(NULL, dwSize, &pdwNeeded, &pdwReturned);
+				if(result == PR56ERR_SUCCESS)
 				{
-					byte reson = 0;
-					DWORD	dwSize = 0;	
-					DWORD	pdwNeeded = 0;
-					DWORD	pdwReturned = 0;
-					result = pr56XXEnumEnabledPrinters(NULL, dwSize, &pdwNeeded, &pdwReturned);
-					if(result == PR56ERR_SUCCESS)
+					if(pdwNeeded > 0) // When there are available printers
 					{
-						if(pdwNeeded > 0) // When there are available printers
-						{
-							reson = 1;	
-						}
-						else
-							reson =2 ;
+						reson = 1;	
 					}
 					else
-						reson = 3;
+						reson =2 ;
+				}
+				else
+					reson = 3;
 
-					PR5600RESULT result  = pr56XXClosePrinter(pr56handle);
-					if(result != PR56ERR_SUCCESS)
-					{
-						pr56handle = NULL;
-					}
-					DeleteDC(m_hCardDCForPrinting);;
-					m_hCardDCForPrinting = 0;
-				    if(reson==1)
-						return 0x9012;// 写错打印机名;
-					else if(reson==2)
-						return 0x9013;//无可用的打印机，需要重启电脑
-					else
-						return 0x9014;//函数调用失败。重装驱动。
-				}
-				result = pr56XXGetPrinterStatusInformationEx(pr56handle, &info2, sizeof(info2), &dwReturned, &sense, sizeof(sense), &dwSenseReturned);
-				if(result == PR56ERR_NO_ERROR)
+				PR5600RESULT result  = pr56XXClosePrinter(pr56handle);
+				if(result != PR56ERR_SUCCESS)
 				{
-					byte s1 = info2.btHardwareStatus&0x10;
-					byte s2 = info2.btHardwareStatus&0x04;
-					if (s1==0x10 && s2!=0x04)
-					{
-						return 0x9000;
-					}
-					else
-					{
-						PR5600RESULT result  = pr56XXClosePrinter(pr56handle);
-						if(result != PR56ERR_SUCCESS)
-						{
-							pr56handle = NULL;
-						}
-						DeleteDC(m_hCardDCForPrinting);;
-						m_hCardDCForPrinting = 0;
-						return 0x9015  ;
-					};
+					pr56handle = NULL;
 				}
-				else   
+				DeleteDC(m_hCardDCForPrinting);;
+				m_hCardDCForPrinting = 0;
+				if(reson==1)
+					return 0x9012;// 写错打印机名;
+				else if(reson==2)
+					return 0x9013;//无可用的打印机，需要重启电脑
+				else
+					return 0x9014;//函数调用失败。重装驱动。
+			}
+			result = pr56XXGetPrinterStatusInformationEx(pr56handle, &info2, sizeof(info2), &dwReturned, &sense, sizeof(sense), &dwSenseReturned);
+			if(result == PR56ERR_NO_ERROR)
+			{
+				byte s1 = info2.btHardwareStatus&0x10;
+				byte s2 = info2.btHardwareStatus&0x04;
+				if (s1==0x10 && s2!=0x04)
+				{
+					return 0x9000;
+				}
+				else
 				{
 					PR5600RESULT result  = pr56XXClosePrinter(pr56handle);
 					if(result != PR56ERR_SUCCESS)
@@ -283,20 +267,30 @@ unsigned short	C201::C201_StartOneJob(CString strPrintName)
 					}
 					DeleteDC(m_hCardDCForPrinting);;
 					m_hCardDCForPrinting = 0;
-					return 0x9016;
+					return 0x9015  ;
+				};
+			}
+			else   
+			{
+				PR5600RESULT result  = pr56XXClosePrinter(pr56handle);
+				if(result != PR56ERR_SUCCESS)
+				{
+					pr56handle = NULL;
 				}
-
+				DeleteDC(m_hCardDCForPrinting);;
+				m_hCardDCForPrinting = 0;
+				return 0x9016;
 			}
 
 		}
-		catch(...)
-		{
-			//delete m_ComDlg;
-			//m_ComDlg = NULL;
-			return 0x9017;//!!!
-		}	
-	//}
-	return 0x9000;//C201_CheckPrinterReady(&HaveCardIn);
+
+	}
+	catch(...)
+	{			
+		return 0x9017;//!!!
+	}	
+	
+	return 0x9000;
 };
 
 BOOL	C201::C201_SetPrintDuplexOrNot(int bDuplexMode)
@@ -1443,6 +1437,7 @@ unsigned short C201::C201_EndJob()
 
 BOOL C201::IsMyPrinter(char* buff)
 {
+	return true;
     if(!m_38TReader.IsMyPrinter(buff))
 	    m_bIsMyPrinter = false;
     else
@@ -1524,4 +1519,46 @@ bool	C201::C201_Moveout()
 	}
 	else
 		return false;
+}
+
+
+BOOL	C201::C201_LoadC201DLL(CString strPrintName)
+{
+	CString dllName;
+	if (strPrintName.Find(L"PR-C201", 0) > 0)
+	{
+		dllName = L"PRCDAPI.DLL";
+	}else if (strPrintName.Find(L"Avansia", 0) > 0)
+	{
+		dllName = L"EVLDAPI.DLL";
+	}else{
+		return FALSE;
+	}
+	m_hInstance = LoadLibrary(dllName);
+
+	if(m_hInstance == NULL)
+	{		
+		return FALSE;
+	}
+
+	// Acquisition of DLL address
+	pr56XXEnumEnabledPrinters = (_pr56XXEnumEnabledPrinters)GetProcAddress(m_hInstance, "pr56XXEnumEnabledPrinters");
+	pr56XXTerminate = (_pr56XXTerminate)GetProcAddress(m_hInstance, "pr56XXTerminate");
+	pr56XXOpenPrinter = (_pr56XXOpenPrinter)GetProcAddress(m_hInstance, "pr56XXOpenPrinter");
+	pr56XXClosePrinter = (_pr56XXClosePrinter)GetProcAddress(m_hInstance, "pr56XXClosePrinter");
+	pr56XXRegisterMessage = (_pr56XXRegisterMessage)GetProcAddress(m_hInstance, "pr56XXRegisterMessage");
+	pr56XXGetLogs = (_pr56XXGetLogs)GetProcAddress(m_hInstance, "pr56XXGetLogs");
+	pr56XXGetPrinterData = (_pr56XXGetPrinterData)GetProcAddress(m_hInstance, "pr56XXGetPrinterData");
+	pr56XXPrint_SetICEncoder = (_pr56XXPrint_SetICEncoder)GetProcAddress(m_hInstance, "pr56XXPrint_SetICEncoder");
+	pr56XXPrint = (_pr56XXPrint)GetProcAddress(m_hInstance, "pr56XXPrint");
+	pr56XXGetPrinterStatusInformationEx = (_pr56XXGetPrinterStatusInformationEx)GetProcAddress(m_hInstance, "pr56XXGetPrinterStatusInformationEx");
+
+	if(pr56XXEnumEnabledPrinters == NULL || pr56XXTerminate == NULL || pr56XXOpenPrinter == NULL 
+		|| pr56XXClosePrinter == NULL || pr56XXRegisterMessage == NULL ||  pr56XXGetLogs == NULL 
+		|| pr56XXGetPrinterData == NULL || pr56XXPrint_SetICEncoder == NULL || pr56XXPrint == NULL
+		|| pr56XXGetPrinterStatusInformationEx == NULL)
+	{		
+		return FALSE;
+	}
+	return TRUE;
 }

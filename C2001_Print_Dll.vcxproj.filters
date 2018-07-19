@@ -81,7 +81,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="PRCDAPI.lib" />
     <Library Include="WinSCard.Lib" />
   </ItemGroup>
 </Project>

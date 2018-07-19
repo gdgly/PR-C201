@@ -358,7 +358,6 @@
     <ClInclude Include="WinSCard.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="PRCDAPI.lib" />
     <Library Include="WinSCard.Lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

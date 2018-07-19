@@ -206,7 +206,8 @@ void C201TestDlg::OnBnClickedOk()
 	BOOL suc = TRUE;
 	HANDLE devNo = NULL;
 
-	CString m_strPrintName(L"Nisca PR-C201");
+	//CString m_strPrintName(L"Nisca PR-C201");
+	CString m_strPrintName(L"Evolis Avansia");
  
 	unsigned short  ret0 = JT_StartOneJob(W2A(m_strPrintName.GetBuffer(0)),&devNo);
 

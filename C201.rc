@@ -63,8 +63,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,4,1,1
- PRODUCTVERSION 2,4,1,1
+ FILEVERSION 2,5,1,1
+ PRODUCTVERSION 2,5,1,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -81,11 +81,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "深圳冠苑实业发展有限公司"
             VALUE "FileDescription", "GuanYuan DLL"
-            VALUE "FileVersion", "2.4.1.1"
+            VALUE "FileVersion", "2.5.1.1"
             VALUE "LegalCopyright", "版权所有 (C) 2008"
             VALUE "OriginalFilename", "GuanYuan.DLL"
             VALUE "ProductName", "GuanYuan Dynamic Link Library"
-            VALUE "ProductVersion", "2.4.1.1"
+            VALUE "ProductVersion", "2.5.1.1"
         END
     END
     BLOCK "VarFileInfo"

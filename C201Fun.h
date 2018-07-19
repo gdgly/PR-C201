@@ -3,7 +3,7 @@
 #include "Picture.h"
 #include "PRCDAPI.H"
 #include "PRCDMODE.H"
-
+#include "38TReader.h"
 
 #define MSG_SEND_MESSAGE	WM_APP + 3;
 
@@ -31,7 +31,6 @@ typedef struct {
   } PrintInfo;
 
 
-// Direct communication function
 typedef PR5600RESULT	(CALLBACK* _pr56XXEnumEnabledPrinters)(PVOID, DWORD, PDWORD, PDWORD);
 typedef VOID			(CALLBACK* _pr56XXTerminate)(VOID);
 typedef PR5600HANDLE	(CALLBACK* _pr56XXOpenPrinter)(DWORD, DWORD, PCWSTR, HWND, UINT);
@@ -40,28 +39,10 @@ typedef PR5600RESULT	(CALLBACK* _pr56XXRegisterMessage)(PR5600HANDLE, DWORD, PR5
 typedef PR5600RESULT	(CALLBACK* _pr56XXGetLogs)(DWORD, DWORD, PCWSTR, DWORD, PDWORD, PPR5600_LOG);
 typedef PR5600RESULT	(CALLBACK* _pr56XXGetPrinterData)(PR5600HANDLE, PBYTE, DWORD, PDWORD);
 typedef PR5600RESULT	(CALLBACK* _pr56XXPrint_SetICEncoder)(PR5600HANDLE, DWORD, BOOL);
+typedef PR5600RESULT	(CALLBACK* _pr56XXPrint)(PR5600HANDLE, PBYTE, DWORD);
+typedef PR5600RESULT (CALLBACK* _pr56XXGetPrinterStatusInformationEx)(PR5600HANDLE, PPR5600_STATUS_INFO2,
+	DWORD, PDWORD, PPR5600_PRINTER_SENSE, DWORD, PDWORD);
 
-typedef PR5600RESULT	(CALLBACK* _pr56XXGetPrinterStatusInformationEx)(
-	PR5600HANDLE			hPrinter,
-	PPR5600_STATUS_INFO2	pInfo,
-	DWORD                   dwInfoSize,
-	PDWORD					pdwReceivedInfoSize,		// #318
-	PPR5600_PRINTER_SENSE	pSense,
-	DWORD                   dwSenseSize,
-	PDWORD					pdwReceivedSenseSize		// #318
-);
-typedef PR5600RESULT	(CALLBACK* _pr56XXPrint)(
-	PR5600HANDLE	hPrinter,
-	PBYTE		pBuffer,
-	DWORD		dwSize
-);
-
-
-
-typedef CString  (CALLBACK * pGetReadBuf)() ;
-
-
-#include "38TReader.h"
 
 class C201
 {
@@ -71,19 +52,19 @@ public:
 public:
 	int					m_CardType;
 	BOOL				m_bNeedPrinter;
-//CDialog*				m_ComDlg;
-//
-//HINSTANCE m_hInstance;
-//_pr56XXEnumEnabledPrinters				ppr56XXEnumEnabledPrinters;
-//_pr56XXTerminate						ppr56XXTerminate;
-//_pr56XXOpenPrinter						ppr56XXOpenPrinter;
-//_pr56XXClosePrinter						ppr56XXClosePrinter;
-//_pr56XXRegisterMessage					ppr56XXRegisterMessage;
-//_pr56XXGetLogs							ppr56XXGetLogs;
-//_pr56XXGetPrinterData					ppr56XXGetPrinterData;
-//_pr56XXPrint_SetICEncoder				ppr56XXPrint_SetICEncoder;
-//_pr56XXGetPrinterStatusInformationEx	ppr56XXGetPrinterStatusInformationEx;
-//_pr56XXPrint							ppr56XXPrint;
+
+	// Function pointer
+	_pr56XXEnumEnabledPrinters				pr56XXEnumEnabledPrinters;
+	_pr56XXTerminate						pr56XXTerminate;
+	_pr56XXOpenPrinter						pr56XXOpenPrinter;
+	_pr56XXClosePrinter						pr56XXClosePrinter;
+	_pr56XXRegisterMessage					pr56XXRegisterMessage;
+	_pr56XXGetLogs							pr56XXGetLogs;
+	_pr56XXGetPrinterData					pr56XXGetPrinterData;
+	_pr56XXPrint_SetICEncoder				pr56XXPrint_SetICEncoder;
+	_pr56XXPrint							pr56XXPrint;
+	_pr56XXGetPrinterStatusInformationEx    pr56XXGetPrinterStatusInformationEx;
+	HINSTANCE m_hInstance;
 public:
 	CPicture		m_Pic1;
 	HDC				m_hCardDCForPrinting;
@@ -100,7 +81,8 @@ public:
     
     BOOL                m_bSCFailOutPuted;
 public:
-	BOOL	C201_LoadC201DLL();		 
+	bool ResetPrint(CString			PrinterName);
+	BOOL	C201_LoadC201DLL(CString strPrintName);		 
 	unsigned short		C201_StartOneJob(CString strPrintName);
     bool	C201_SendEjectCardCommand();
 
